@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parse AI</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
+    h1 { color: #333; }
+    label, textarea, input, button { display: block; width: 100%; margin-bottom: 1rem; }
+    textarea { height: 100px; }
+    .response-box { background: #f4f4f4; padding: 1rem; border-radius: 5px; white-space: pre-wrap; }
+    button { padding: 0.5rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+
+  <h1>📄 Parse AI</h1>
+
+  <label>Upload PDF/Image:</label>
+  <input type="file" id="fileInput" accept=".pdf,image/*" />
+  <button onclick="uploadFile()">Upload & Summarize</button>
+  <div id="summaryBox" class="response-box"></div>
+
+  <hr/>
+
+  <label>Ask a Question:</label>
+  <textarea id="questionInput" placeholder="e.g., Is the claim valid after 6 months?"></textarea>
+  <button onclick="askQuestion()">Get Answer</button>
+  <div id="answerBox" class="response-box"></div>
+
+  <hr/>
+
+  <label>Scenario Simulator:</label>
+  <textarea id="scenarioInput" placeholder="e.g., What if the coverage started in January?"></textarea>
+  <button onclick="simulateScenario()">Simulate</button>
+  <div id="scenarioBox" class="response-box"></div>
+
+  <script>
+    let fullText = "";
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const res = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      fullText = data.full_text;
+      document.getElementById("summaryBox").textContent = data.summary;
+    }
+
+    async function askQuestion() {
+      const question = document.getElementById("questionInput").value;
+
+      const res = await fetch("http://localhost:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context: fullText, question })
+      });
+
+      const data = await res.json();
+      document.getElementById("answerBox").textContent = data.answer;
+    }
+
+    async function simulateScenario() {
+      const scenario = document.getElementById("scenarioInput").value;
+
+      const res = await fetch("http://localhost:8000/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context: fullText, scenario })
+      });
+
+      const data = await res.json();
+      document.getElementById("scenarioBox").textContent = data.result;
+    }
+  </script>
+</body>
+</html>
