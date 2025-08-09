@@ -35,7 +35,7 @@ class HackRxRunRequest(BaseModel):
 class HackRxRunResponse(BaseModel):
     answers: List[str]
 
-API_KEY = os.getenv("HACKRX_API_KEY", "hack")  # replace with secure key or env var
+API_KEY = os.getenv("HACKRX_API_KEY", "a8f2e613b3a3b9b825f96951bc7ed46ccded181d1c9c83205e6a395e92c71f56")  # replace with secure key or env var
 
 def verify_token(request: Request):
     auth = request.headers.get("Authorization")
