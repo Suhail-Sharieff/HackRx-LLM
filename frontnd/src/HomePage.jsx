@@ -3,7 +3,7 @@ import { Upload, MessageSquare, FlaskConical, Database, Search, Settings, Home, 
 import { FaUpload, FaSearch, FaMagic, FaQuestion } from 'react-icons/fa';
 import { SplineLight, SplineDark } from './Spline.jsx';
 
-const API = "http://127.0.0.1:8000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 // Loading spinner component
 const LoadingSpinner = () => (
