@@ -39,6 +39,70 @@ class TrainingDataRequest(BaseModel):
 class FineTuneRequest(BaseModel):
     training_data: List[TrainingDataRequest]
     model_name: Optional[str] = None
+class HackRxRunRequest(BaseModel):
+    documents: str
+    questions: List[str]
+
+class HackRxRunResponse(BaseModel):
+    answers: List[str]
+
+from fastapi import Depends, Request
+
+API_KEY = os.getenv("HACKRX_API_KEY", "hack")  # replace with your secure key or use env var
+
+def verify_token(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = auth.split(" ")[1]
+    if token != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+import requests
+from extract_text import extract_text_from_file
+import asyncio
+import requests
+import time
+
+@app.post("/hackrx/run", response_model=HackRxRunResponse)
+async def hackrx_run(request_data: HackRxRunRequest, auth=Depends(verify_token)):
+    try:
+        # Download the document
+        pdf_response = requests.get(request_data.documents)
+        if pdf_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to download document")
+
+        filename = request_data.documents.split("/")[-1].split("?")[0]
+        file_bytes = pdf_response.content
+        text = extract_text_from_file(filename, file_bytes)
+
+        answers = []
+
+        # Process each question with delay and retry
+        for question in request_data.questions:
+            answer = await try_answer_with_retry(text, question)
+            answers.append(answer)
+            await asyncio.sleep(1)  # 1 second delay to avoid hitting Groq rate limits
+
+        return {"answers": answers}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process: {str(e)}")
+async def try_answer_with_retry(context: str, question: str, max_retries: int = 3) -> str:
+    backoff = 2  # initial wait in seconds
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            return answer_question(context, question)
+        except Exception as e:
+            if "429" in str(e) and attempt < max_retries:
+                print(f"[WARN] Rate limit hit, retrying in {backoff} seconds... (Attempt {attempt})")
+                await asyncio.sleep(backoff)
+                backoff *= 2  # exponential backoff
+            else:
+                print(f"[ERROR] Failed to answer question after {attempt} attempts: {e}")
+                return "Failed to answer due to rate limiting or internal error."
+    return "Failed to answer due to unknown error."
+
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -276,3 +340,5 @@ async def hybrid_search(request: VectorSearchRequest):
 
 # Import datetime for the upload endpoint
 from datetime import datetime
+from mangum import Mangum 
+handler = Mangum(app) 
